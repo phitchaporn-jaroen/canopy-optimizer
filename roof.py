@@ -8,14 +8,35 @@ st.set_page_config(page_title="Canopy Optimizer", layout="wide")
 
 st.markdown("""
     <style>
+    /* สไตล์สำหรับกล่อง Metric และ Card */
     [data-testid="stMetric"] { background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; }
     .custom-card { background-color: #EFF6FF; border-left: 5px solid #3B82F6; border-radius: 6px; padding: 12px; margin: 15px 0; }
     html, body, [class*="css"] { font-size: 14px; }
     
-    /* ปรับแต่งตาราง Streamlit ให้แสดงผลตรงกลางและรองรับ HTML */
-    .stTable td, .stTable th {
+    /* สไตล์ปรับแต่งพื้นฐานสำหรับทุกตาราง (st.table) */
+    .stTable table {
+        width: 100% !important;
+    }
+    .stTable th, .stTable td {
         text-align: center !important;
         vertical-align: middle !important;
+        padding: 10px !important;
+    }
+    .stTable th {
+        background-color: #F1F5F9 !important;
+        color: #1E293B !important;
+        font-weight: bold !important;
+    }
+    .stTable td:first-child {
+        text-align: left !important;
+    }
+    
+    /* สไตล์เฉพาะสำหรับตารางสุดท้าย: บังคับความกว้างคอลลัมน์แรกและตัดคำภาษาอังกฤษอัตโนมัติ */
+    .stTable table tr td:first-child, .stTable table tr th:first-child {
+        min-width: 260px !important;
+        max-width: 290px !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -88,12 +109,12 @@ if shape_type == "สี่เหลี่ยม":
 elif shape_type == "สามเหลี่ยมด้านเท่า":
     h_tri = S * np.sqrt(3) / 2
     pts = [(0, 2*h_tri/3), (-S/2, -h_tri/3), (S/2, -h_tri/3)]
-    post_labels = ["เสา 1<br>(ยอด)", "เสา 2<br>(ซ้าย)", "เสา 3<br>(ขวา)"]
+    post_labels = ["เสา 1 (ยอด)", "เสา 2 (ซ้าย)", "เสา 3 (ขวา)"]
 else: # วงกลม
     angles = np.linspace(0, 2*np.pi, 33)[:-1]
     pts = [(R * np.cos(a), R * np.sin(a)) for a in angles]
     post_indices = [8, 0, 24, 16] 
-    post_labels = ["จุดเหนือ<br>(N)", "จุดตะวันออก<br>(E)", "จุดใต้<br>(S)", "จุดตะวันตก<br>(W)"]
+    post_labels = ["จุดเหนือ (N)", "จุดตะวันออก (E)", "จุดใต้ (S)", "จุดตะวันตก (W)"]
 
 base_coords = [rotate_point(p[0], p[1], build_rad) for p in pts]
 poly_canopy_base = Polygon(base_coords)
@@ -173,7 +194,6 @@ with col_left:
         six, siy = intersect_opt.exterior.xy
         fig_site.add_trace(go.Scatter(x=list(six), y=list(siy), fill="toself", fillcolor="rgba(30, 41, 59, 0.7)", line=dict(width=0), name="เงาใต้ชายคา"))
 
-    # สลักข้อความบน Blueprint แตกวงเล็บลงมาตรงกลาง
     if shape_type != "วงกลม":
         for i, label in enumerate(post_labels):
             fig_site.add_trace(go.Scatter(x=[base_coords[i][0]], y=[base_coords[i][1]], mode="markers+text", text=[f"<b>{label}</b><br>{reductions_cm[i]:.1f}cm"], textposition="top center", marker=dict(color="blue", size=12), showlegend=False))
@@ -207,7 +227,12 @@ with col_right:
         sfy_l = list(sfy)[:-1]
         sfz_l = [0.0] * len(sfx_l)
         
-        fig_3d.add_trace(go.Scatter3d(x=list(sfx), y=list(sfy), z=[0.0]*len(sfx), mode='lines', line=dict(color='rgba(51, 65, 85, 0.8)', width=2), name="ขอบเงารวม"))
+        fig_3d.add_trace(go.Scatter3d(
+            x=list(sfx), y=list(sfy), z=[0.0]*len(sfx),
+            mode='lines',
+            line=dict(color='rgba(51, 65, 85, 0.8)', width=2),
+            name="ขอบเงารวม"
+        ))
         
         mesh_i, mesh_j, mesh_k = [], [], []
         for index in range(1, len(sfx_l) - 1):
@@ -215,7 +240,13 @@ with col_right:
             mesh_j.append(index)
             mesh_k.append(index + 1)
             
-        fig_3d.add_trace(go.Mesh3d(x=sfx_l, y=sfy_l, z=sfz_l, i=mesh_i, j=mesh_j, k=mesh_k, color='#334155', opacity=0.45, name="บริเวณเงารวมทั้งหมด"))
+        fig_3d.add_trace(go.Mesh3d(
+            x=sfx_l, y=sfy_l, z=sfz_l,
+            i=mesh_i, j=mesh_j, k=mesh_k,
+            color='#334155',
+            opacity=0.45,
+            name="บริเวณเงารวมทั้งหมด"
+        ))
     
     draw_idx = range(len(base_coords)) if shape_type != "วงกลม" else post_indices
     for i in draw_idx:
@@ -224,83 +255,37 @@ with col_right:
     fig_3d.update_layout(height=500, margin=dict(l=0, r=0, b=0, t=0), scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(range=[0, H_start+0.5], title="Height (m)")))
     st.plotly_chart(fig_3d, use_container_width=True)
 
-# --- 10. BEAUTIFIED TABLES (จัดรูปแบบกึ่งกลาง + ตัดข้อความในวงเล็บลงด้านล่าง) ---
+# --- 10. TABLES ---
 st.markdown('<div class="custom-card"><p style="font-weight:bold; color:#1E40AF;">🛠️ คู่มือระยะผูกเชือกติดตั้งหน้างานจริง (Site Guide)</p></div>', unsafe_allow_html=True)
 
 if shape_type != "วงกลม":
-    raw_labels = post_labels
-    col1_title = "ตำแหน่งเสา"
-    col2_title = "ระยะลดจากยอดเสา"
-    col3_title = "ความสูงผ้าใบจริง<br>(แกน Z)"
-    
-    c1_data = [f'<div style="text-align:center;"><b>{lbl}</b></div>' for lbl in raw_labels]
-    c2_data = [f'<div style="text-align:center;">ลดลง {r:.1f} ซม.</div>' if r >= 0.5 else '<div style="text-align:center; color:#10B981; font-weight:bold;">0 ซม.<br>(ระดับสูงสุด)</div>' for r in reductions_cm]
-    c3_data = [f'<div style="text-align:center;">{roof_coords_opt[i][2]:.2f} เมตร</div>' for i in range(len(base_coords))]
+    guide_data = {
+        "ตำแหน่งเสา": post_labels,
+        "ระยะลดจากยอดเสา": [f"ลดลง {r:.1f} ซม." if r >= 0.5 else "0 ซม. (ระดับสูงสุด)" for r in reductions_cm],
+        "ความสูงผ้าใบจริง (แกน Z)": [f"{roof_coords_opt[i][2]:.2f} เมตร" for i in range(len(base_coords))]
+    }
 else:
-    raw_labels = post_labels
-    col1_title = "จุดทิศหลัก"
-    col2_title = "ระยะลดจากระดับเดิม"
-    col3_title = "ความสูงผ้าใบจุดนี้<br>(แกน Z)"
-    
-    c1_data = [f'<div style="text-align:center;"><b>{lbl}</b></div>' for lbl in raw_labels]
-    c2_data = [f'<div style="text-align:center;">ลดลง {reductions_cm[idx]:.1f} ซม.</div>' if reductions_cm[idx] >= 0.5 else '<div style="text-align:center; color:#10B981; font-weight:bold;">0 ซม.<br>(ระดับสูงสุด)</div>' for idx in post_indices]
-    c3_data = [f'<div style="text-align:center;">{roof_coords_opt[idx][2]:.2f} เมตร</div>' for idx in post_indices]
+    guide_data = {
+        "จุดทิศหลัก": post_labels,
+        "ระยะลดจากระดับเดิม": [f"ลดลง {reductions_cm[idx]:.1f} ซม." if reductions_cm[idx] >= 0.5 else "0 ซม. (ระดับสูงสุด)" for idx in post_indices],
+        "ความสูงผ้าใบจุดนี้": [f"{roof_coords_opt[idx][2]:.2f} เมตร" for idx in post_indices]
+    }
 
-guide_table_html = f"""
-<table style="width:100%; border-collapse:collapse; margin:10px 0; font-size:14px;">
-    <thead>
-        <tr style="background-color:#F1F5F9; border-bottom:2px solid #CBD5E1;">
-            <th style="padding:12px; text-align:center;">{col1_title}</th>
-            <th style="padding:12px; text-align:center;">{col2_title}</th>
-            <th style="padding:12px; text-align:center;">{col3_title}</th>
-        </tr>
-    </thead>
-    <tbody>
-"""
-for c1, c2, c3 in zip(c1_data, c2_data, c3_data):
-    guide_table_html += f'<tr style="border-bottom:1px solid #E2E8F0;"><td style="padding:12px;">{c1}</td><td style="padding:12px;">{c2}</td><td style="padding:12px;">{c3}</td></tr>'
-guide_table_html += "</tbody></table>"
-
-st.markdown(guide_table_html, unsafe_allow_html=True)
-
+st.table(guide_data)
 
 st.write("---")
 st.subheader("📊 ตารางวิเคราะห์เปรียบเทียบดัชนีประสิทธิภาพเชิงลึก")
 
-metrics_labels = [
-    "พื้นที่เงาตกกระทบรวมทั้งหมด<br>(Total Shade Area)", 
-    "พื้นที่ร่มเงาที่ใช้งานได้ใต้ชายคา<br>(Net Effective Shade)", 
-    "อัตราครอบคลุมร่มเงาใต้ชายคา<br>(Shade Coverage Ratio)"
-]
-flat_metrics = [f"{area_total_shadow_flat:.2f} ตร.ม.", f"{area_opt_flat:.2f} ตร.ม.", f"{percent_flat:.1f} %"]
-opt_metrics = [f"{area_total_shadow_opt:.2f} ตร.ม.", f"{area_opt:.2f} ตร.ม.", f"{percent_opt:.1f} %"]
+# ข้อมูลตารางสุดท้ายแบบคลีนสุด ๆ ไม่มี <br> เจือปน
+compare_table_data = {
+    "ตัวชี้วัดประสิทธิภาพ (Performance Metrics)": [
+        "พื้นที่เงาตกกระทบรวมทั้งหมด (Total Shade Area)", 
+        "พื้นที่ร่มเงาที่ใช้งานได้ใต้ชายคา (Net Effective Shade)", 
+        "อัตราครอบคลุมร่มเงาใต้ชายคา (Shade Coverage Ratio)"
+    ],
+    "❌ หลังคาแบบราบปกติ (ก่อนปรับระดับ)": [f"{area_total_shadow_flat:.2f} ตร.ม.", f"{area_opt_flat:.2f} ตร.ม.", f"{percent_flat:.1f} %"],
+    "✨ หลังคาแบบปรับระดับ (Optimized Frame)": [f"{area_total_shadow_opt:.2f} ตร.ม.", f"{area_opt:.2f} ตร.ม.", f"{percent_opt:.1f} %"],
+    "📈 ส่วนต่างการพัฒนา (Delta Gain)": [f"{area_total_shadow_opt - area_total_shadow_flat:+.2f} ตร.ม.", f"{area_opt - area_opt_flat:+.2f} ตร.ม.", f"{percent_opt - percent_flat:+.1f} %"]
+}
 
-diff_total = area_total_shadow_opt - area_total_shadow_flat
-diff_opt = area_opt - area_opt_flat
-diff_per = percent_opt - percent_flat
-delta_metrics = [f"{diff_total:+.2f} ตร.ม.", f"{diff_opt:+.2f} ตร.ม.", f"{diff_per:+.1f} %"]
-
-analysis_table_html = """
-<table style="width:100%; border-collapse:collapse; margin:10px 0; font-size:14px;">
-    <thead>
-        <tr style="background-color:#F1F5F9; border-bottom:2px solid #CBD5E1;">
-            <th style="padding:12px; text-align:center; width:34%;">ตัวชี้วัดประสิทธิภาพ<br>(Performance Metrics)</th>
-            <th style="padding:12px; text-align:center; color:#64748B;">❌ หลังคาแบบราบปกติ<br>(ก่อนปรับระดับ)</th>
-            <th style="padding:12px; text-align:center; color:#1E40AF;">✨ หลังคาแบบปรับระดับ<br>(Optimized Frame)</th>
-            <th style="padding:12px; text-align:center; color:#0F766E;">📈 ส่วนต่างการพัฒนา<br>(Delta Gain)</th>
-        </tr>
-    </thead>
-    <tbody>
-"""
-for m, f, o, d in zip(metrics_labels, flat_metrics, opt_metrics, delta_metrics):
-    analysis_table_html += f"""
-    <tr style="border-bottom:1px solid #E2E8F0;">
-        <td style="padding:12px; text-align:center;"><b>{m}</b></td>
-        <td style="padding:12px; text-align:center;">{f}</td>
-        <td style="padding:12px; text-align:center; font-weight:bold; color:#1E40AF;">{o}</td>
-        <td style="padding:12px; text-align:center; font-weight:bold; color:#0F766E;">{d}</td>
-    </tr>
-    """
-analysis_table_html += "</tbody></table>"
-
-st.markdown(analysis_table_html, unsafe_allow_html=True)
+st.table(compare_table_data)
